@@ -69,7 +69,8 @@ public class soloTeleopV4 extends LinearOpMode {
 
         Servo dumpServo = hardwareMap.servo.get("flipBucket");
         Servo holdServo = hardwareMap.servo.get("pixelRelease");
-        //Servo intakeServo = hardwareMap.servo.get("bao")
+        //Servo leftIntakeServo= hardwareMap.servo.get("bao");
+        //Servo rightIntakeServo= hardwareMap.servo.get("bao");
 
 
         DcMotor lift = hardwareMap.dcMotor.get("Lift");
@@ -140,6 +141,14 @@ public class soloTeleopV4 extends LinearOpMode {
             int msDelay = 1; // delay between button inputs, because there's a smarter way but i'm way too lazy
             int intakeDelay = 1; // delay between intake toggles, just different because I kind of like it different
             int tick_error = 10; // maximum error allowed for our lift position
+
+            // intake config values
+            double leftIntakeIdle = 0;
+            double leftIntakeActive = 0;
+            double rightIntakeIdle = 0;
+            double rightIntakeActive = 0;
+            double intakePower = 0.8;
+            double rejectPower = -1;
 
             // lift code OMG FSM FSM FSM FSM FSM FSM FSM
             switch (liftState){
@@ -242,6 +251,8 @@ public class soloTeleopV4 extends LinearOpMode {
             switch(intakeState){ // we already have one FSM, why not ANOTHER??!??!?!??!?!?!?!?!
                 case IDLE: // intake idle, what else would it be??????? idk why i write comments anymore :(((((((((((((
                     intake.setPower(0);
+                    //leftIntakeServo.setPosition(leftIntakeIdle);
+                    //rightIntakeServo.setPosition(rightIntakeIdle);
                     if (gamepad1.b && aTimer.time() > intakeDelay){
                         aTimer.reset();
                         intakeState = IntakeState.IN;
@@ -252,7 +263,9 @@ public class soloTeleopV4 extends LinearOpMode {
                     }
                     break;
                 case IN: // intake pixel
-                    intake.setPower(0.8);
+                    //leftIntakeServo.setPosition(leftIntakeActive);
+                    //rightIntakeServo.setPosition(rightIntakeActive);
+                    intake.setPower(intakePower);
                     if (gamepad1.b && aTimer.time() > intakeDelay){
                         aTimer.reset();
                         intakeState = IntakeState.IDLE;
@@ -263,7 +276,9 @@ public class soloTeleopV4 extends LinearOpMode {
                     }
                     break;
                 case OUT: // spit out pixel because driver's trash
-                    intake.setPower(-1);
+                    //leftIntakeServo.setPosition(leftIntakeIdle);
+                    //rightIntakeServo.setPosition(rightIntakeIdle);
+                    intake.setPower(rejectPower);
                     if (gamepad1.b && aTimer.time() > intakeDelay){
                         aTimer.reset();
                         intakeState = IntakeState.IN;
