@@ -69,6 +69,8 @@ public class soloTeleopV4 extends LinearOpMode {
 
         Servo dumpServo = hardwareMap.servo.get("flipBucket");
         Servo holdServo = hardwareMap.servo.get("pixelRelease");
+        Servo intakeServo = hardwareMap.servo.get("IntakeServoLeft");
+
         //Servo leftIntakeServo= hardwareMap.servo.get("bao");
         //Servo rightIntakeServo= hardwareMap.servo.get("bao");
 
@@ -76,6 +78,7 @@ public class soloTeleopV4 extends LinearOpMode {
         DcMotor lift = hardwareMap.dcMotor.get("Lift");
         lift.setDirection(DcMotor.Direction.REVERSE);
         lift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        //holdServo.setPosition(0.25);
         lift.setTargetPosition(0);
         lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         DcMotor intake = hardwareMap.dcMotor.get("Intake");
@@ -124,14 +127,26 @@ public class soloTeleopV4 extends LinearOpMode {
             double FSfrontRightPower = (rotY - rotX - rx) / denominator;
             double FSbackRightPower = (rotY + rotX - rx) / denominator;
             */
-
+            double slowFactor = 0.1;
+            double FSy = (slowFactor * y); // Remember, Y stick value is reversed
+            double FSx = (slowFactor * x); // Counteract imperfect strafing
+            double FSrx = (slowFactor * rx);
+            double FSdenominator = Math.max(Math.abs(FSy) + Math.abs(FSx) + Math.abs(FSrx), 1);
+            double FSfrontLeftPower = (FSy + FSx + FSrx) / FSdenominator;
+            double FSbackLeftPower = (FSy - FSx + FSrx) / FSdenominator;
+            double FSfrontRightPower = (FSy - FSx - FSrx) / FSdenominator;
+            double FSbackRightPower = (FSy + FSx - FSrx) / FSdenominator;
             // lift config values
             int liftHigh = 2000; // highest point on lift
             int liftLow = 600; // lowest point lift will go manually to prevent deposit hitting intake
             int liftTarget = 1500; // target position, starts at 1500
 
+            int lowTarget = 700; // low Target position for lift
+            int midTarget = 1500; // medium target for lift
+            int highTarget = 2000; // high target for lift
+
             // deposit config values
-            double depositAngle = 0.28; // how far the deposit will turn when depositing
+            double depositAngle = 0.35; // how far the deposit will turn when depositing
             double hold0 = 0.25; // bucket holding 0 pixles
             double hold1 = 0.25; // bucket holding 1 pixel
             double hold2 = 0.10; // bucket holding 2 pixels
@@ -143,9 +158,9 @@ public class soloTeleopV4 extends LinearOpMode {
             int tick_error = 10; // maximum error allowed for our lift position
 
             // intake config values
-            double leftIntakeIdle = 0;
-            double leftIntakeActive = 0;
-            double rightIntakeIdle = 0;
+            double leftIntakeIdle = 1;
+            double leftIntakeActive = 0.75;
+            double rightIntakeIdle = 0.25;
             double rightIntakeActive = 0;
             double intakePower = 0.8;
             double rejectPower = -1;
@@ -153,17 +168,48 @@ public class soloTeleopV4 extends LinearOpMode {
             // lift code OMG FSM FSM FSM FSM FSM FSM FSM
             switch (liftState){
                 case START:
-                    lift.setPower(0);
-                    holdServo.setPosition(hold0);
-                    if (gamepad1.x){
+                    if (gamepad1.x && xTimer.time() > msDelay){ // goes back to previous lift target
+                        xTimer.reset();
                         holdServo.setPosition(hold2);
                         lift.setTargetPosition(liftTarget);
                         lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
                         lift.setPower(1);
                         liftState = LiftState.EXTEND;
                     }
+                    else if (gamepad1.dpad_up && xTimer.time() > msDelay){ // goes to high lift target
+                        xTimer.reset();
+                        holdServo.setPosition(hold2);
+                        liftTarget = highTarget;
+                        lift.setTargetPosition(liftTarget);
+                        lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                        lift.setPower(1);
+                        liftState = LiftState.EXTEND;
+                    }
+                    else if (gamepad1.dpad_right && xTimer.time() > msDelay){ // goes to medium lift target
+                        xTimer.reset();
+                        holdServo.setPosition(hold2);
+                        liftTarget = midTarget;
+                        lift.setTargetPosition(liftTarget);
+                        lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                        lift.setPower(1);
+                        liftState = LiftState.EXTEND;
+                    }
+                    else if (gamepad1.dpad_right && xTimer.time() > msDelay){ // goes to low lift target
+                        xTimer.reset();
+                        holdServo.setPosition(hold2);
+                        liftTarget = lowTarget;
+                        lift.setTargetPosition(liftTarget);
+                        lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+                        lift.setPower(1);
+                        liftState = LiftState.EXTEND;
+                    }
+                    else{
+                        lift.setPower(0);
+                        holdServo.setPosition(hold0);
+                    }
                     break;
                 case EXTEND:
+                    holdServo.setPosition(hold2);
                     if (Math.abs(lift.getCurrentPosition() - liftTarget) <= tick_error){
                         //lift.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
                         lift.setTargetPosition(liftTarget);
@@ -181,6 +227,7 @@ public class soloTeleopV4 extends LinearOpMode {
                     }
                     break;
                 case DUMP:
+                    //holdServo.setPosition(hold2);
                     if (gamepad1.y  && xTimer.time() > msDelay){ // prepare to deposit
                         xTimer.reset();
                         dumpServo.setPosition(depositAngle);
@@ -234,8 +281,11 @@ public class soloTeleopV4 extends LinearOpMode {
                         liftState = LiftState.RETRACT;
                         lift.setPower(1);
                     }
+                    else{
+                        holdServo.setPosition(hold0);
+                    }
                 case RETRACT:
-                    if (Math.abs(lift.getCurrentPosition()) <= tick_error){
+                    if (Math.abs(lift.getCurrentPosition()) <= 2){
                         //lift.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
                         lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
                         lift.setPower(0); // Might be needed, don't remember
@@ -251,7 +301,7 @@ public class soloTeleopV4 extends LinearOpMode {
             switch(intakeState){ // we already have one FSM, why not ANOTHER??!??!?!??!?!?!?!?!
                 case IDLE: // intake idle, what else would it be??????? idk why i write comments anymore :(((((((((((((
                     intake.setPower(0);
-                    //leftIntakeServo.setPosition(leftIntakeIdle);
+                    intakeServo.setPosition(leftIntakeIdle);
                     //rightIntakeServo.setPosition(rightIntakeIdle);
                     if (gamepad1.b && aTimer.time() > intakeDelay){
                         aTimer.reset();
@@ -263,7 +313,7 @@ public class soloTeleopV4 extends LinearOpMode {
                     }
                     break;
                 case IN: // intake pixel
-                    //leftIntakeServo.setPosition(leftIntakeActive);
+                    intakeServo.setPosition(leftIntakeActive);
                     //rightIntakeServo.setPosition(rightIntakeActive);
                     intake.setPower(intakePower);
                     if (gamepad1.b && aTimer.time() > intakeDelay){
@@ -276,7 +326,7 @@ public class soloTeleopV4 extends LinearOpMode {
                     }
                     break;
                 case OUT: // spit out pixel because driver's trash
-                    //leftIntakeServo.setPosition(leftIntakeIdle);
+                    intakeServo.setPosition(leftIntakeIdle);
                     //rightIntakeServo.setPosition(rightIntakeIdle);
                     intake.setPower(rejectPower);
                     if (gamepad1.b && aTimer.time() > intakeDelay){
@@ -290,7 +340,7 @@ public class soloTeleopV4 extends LinearOpMode {
                     break;
             }
 
-            if (gamepad1.options && aTimer.time() > 2000){aTimer.reset(); fieldCentric = !fieldCentric;} // toggle field centric driving
+            if (gamepad1.start && aTimer.time() > 2000){aTimer.reset(); fieldCentric = !fieldCentric;} // toggle field centric driving
 
             // drive code (IF IT'S BUILT CORRECTLY AHHHHHHHHHHHHHHHHHHH)
             if (!fieldCentric){
@@ -299,11 +349,11 @@ public class soloTeleopV4 extends LinearOpMode {
                 frontRightMotor.setPower(frontRightPower);
                 backRightMotor.setPower(backRightPower);
             }
-            else{
-                frontLeftMotor.setPower(frontLeftPower);
-                backLeftMotor.setPower(backLeftPower);
-                frontRightMotor.setPower(frontRightPower);
-                backRightMotor.setPower(backRightPower);
+            else{ // actually slow mode rn
+                frontLeftMotor.setPower(FSfrontLeftPower);
+                backLeftMotor.setPower(FSbackLeftPower);
+                frontRightMotor.setPower(FSfrontRightPower);
+                backRightMotor.setPower(FSbackRightPower);
             }
         }
     }
