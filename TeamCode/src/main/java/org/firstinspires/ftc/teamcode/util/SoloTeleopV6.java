@@ -10,7 +10,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
 
 
-/* v3 solo Teleop !!!!!!!!!!!!!
+/* v6 solo Teleop !!!!!!!!!!!!!
 
 Controls:
 
@@ -21,19 +21,22 @@ right stick: rotation
 B: Toggle Intake (in) *pressing out while intaking will switch to out and vice versa (see intake fsm)
 A: Toggle Intake (out)
 
-X: extend/retract lift
-Y: (once) deposit (only when fully extended), (twice) reset deposit
+X: extend to last position/retract lift
+dpadUp: extend to high target
+dpadRight: extend to medium target
+dpadLeft: extend to low target
+Y: (only when fully extended) (once) ready deposit (only when fully extended), (twice) release pixels, (thrice) reset deposit and lift
 
 right bumper: adjust lift upwards
 lift bumper: adjust lift downwards
 
-options: toggle field centric driving because its cool
+start: toggle slow mode
 
  */
 
 
 @TeleOp
-public class soloTeleopV4 extends LinearOpMode {
+public class SoloTeleopV6 extends LinearOpMode {
     public enum LiftState {
         START,
         EXTEND,
@@ -87,7 +90,6 @@ public class soloTeleopV4 extends LinearOpMode {
         frontLeftMotor.setDirection(DcMotorSimple.Direction.REVERSE);
         backLeftMotor.setDirection(DcMotorSimple.Direction.REVERSE);
 
-        //TODO: ADD SERVOS(dump, hold pixel, extend intake)
 
         /*
         // WE USING THE IMU WE UP WE UP WE UP WE UP
@@ -194,7 +196,7 @@ public class soloTeleopV4 extends LinearOpMode {
                         lift.setPower(1);
                         liftState = LiftState.EXTEND;
                     }
-                    else if (gamepad1.dpad_right && xTimer.time() > msDelay){ // goes to low lift target
+                    else if (gamepad1.dpad_left && xTimer.time() > msDelay){ // goes to low lift target
                         xTimer.reset();
                         holdServo.setPosition(hold2);
                         liftTarget = lowTarget;
